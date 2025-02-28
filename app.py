@@ -3,12 +3,28 @@ from flask_sqlalchemy import SQLAlchemy
 import bcrypt
 import string
 from datetime import timedelta
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)  # Extends session for a week
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("SQLALCHEMY_DATABASE_URI", 'sqlite:///database.db')
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)  
 db = SQLAlchemy(app)
-app.secret_key = 'it_is_secret'
+app.secret_key = os.getenv("SECRET_KEY", "default_secret")
+
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["5 per minute"] 
+)
+
+@app.errorhandler(429)
+def ratelimit_error(e):
+    return render_template("login.html", error="Too many login attempts! Try again later."), 429
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key = True)
@@ -75,6 +91,7 @@ def register():
     return render_template('register.html')
 
 @app.route('/login', methods= ['GET', 'POST'])
+@limiter.limit("5 per minute")
 def login():
     if 'email' in session:
         return redirect('/dashboard')
@@ -88,7 +105,7 @@ def login():
 
         if user and user.check_password(password):
             session['email'] = user.email
-            session.permanent = True if bool(remember_me) else False
+            session.permanent = True if remember_me == "on" else False
             return redirect('/dashboard')
         else:
             return render_template('login.html', error = 'Invalid email or password entered!')

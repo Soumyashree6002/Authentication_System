@@ -1,6 +1,7 @@
 from flask import Flask, request, render_template, redirect, session, flash
 from flask_sqlalchemy import SQLAlchemy
 import bcrypt
+import string
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
@@ -33,22 +34,32 @@ def index():
 def register():
     if request.method == 'POST':
         name = request.form['name']
-        email = request.form['email']
+        email = request.form.get('email')
         password = request.form['password']
         confirm_password = request.form['pwd']
 
         if(password != confirm_password):
-            return render_template('register.html', error = "Passwords do not match. Please try again")
+            return render_template('register.html', error1 = "Passwords do not match. Please try again")
 
         existing_user = User.query.filter_by(email=email).first()
         if(existing_user):
             flag = True
-            return render_template('register.html', error = flag)
+            return render_template('register.html', error2 = flag)
+        
+        has_alpha = any(c.isalpha() for c in password)  
+        has_digit = any(c.isdigit() for c in password)  
+        has_special = any(c in string.punctuation for c in password)
+
+        strong_password = has_alpha and has_digit and has_special
+
+        if(strong_password == False):
+            return render_template('register.html', error3 = "Please enter a strong password(it should contain alphabets, numbers, as well as special characters)")
 
         new_user = User(email=email, password=password, name=name)
         db.session.add(new_user)
         db.session.commit()
-        return redirect('/login')
+        session['email'] = email
+        return redirect('/dashboard')
 
     return render_template('register.html')
 

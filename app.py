@@ -2,9 +2,11 @@ from flask import Flask, request, render_template, redirect, session, flash
 from flask_sqlalchemy import SQLAlchemy
 import bcrypt
 import string
+from datetime import timedelta
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)  # Extends session for a week
 db = SQLAlchemy(app)
 app.secret_key = 'it_is_secret'
 
@@ -12,7 +14,7 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key = True)
     name = db.Column(db.String(100), nullable = False)
     ph_number = db.Column(db.String(15), nullable=False, unique=True)
-    email = db.Column(db.String(100), nullable = False)
+    email = db.Column(db.String(100), nullable = False, unique= True)
     password = db.Column(db.String(100))
 
     def __init__(self, email, password, name, ph_number):
@@ -34,6 +36,9 @@ def index():
 
 @app.route('/register', methods= ['GET', 'POST'])
 def register():
+    if 'email' in session:
+        return redirect('/dashboard')
+
     if request.method == 'POST':
         name = request.form['name']
         email = request.form.get('email')
@@ -71,14 +76,19 @@ def register():
 
 @app.route('/login', methods= ['GET', 'POST'])
 def login():
+    if 'email' in session:
+        return redirect('/dashboard')
+
     if request.method == 'POST':
         email = request.form.get('email')
         password = request.form['password']
+        remember_me = request.form.get('remember')
 
         user = User.query.filter_by(email=email).first()
 
         if user and user.check_password(password):
             session['email'] = user.email
+            session.permanent = True if bool(remember_me) else False
             return redirect('/dashboard')
         else:
             return render_template('login.html', error = 'Invalid email or password entered!')

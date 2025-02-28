@@ -11,12 +11,14 @@ app.secret_key = 'it_is_secret'
 class User(db.Model):
     id = db.Column(db.Integer, primary_key = True)
     name = db.Column(db.String(100), nullable = False)
+    ph_number = db.Column(db.String(15), nullable=False, unique=True)
     email = db.Column(db.String(100), nullable = False)
     password = db.Column(db.String(100))
 
-    def __init__(self, email, password, name):
+    def __init__(self, email, password, name, ph_number):
         self.name = name
         self.email = email
+        self.ph_number = ph_number
         self.password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
     def check_password(self, password):
@@ -35,6 +37,7 @@ def register():
     if request.method == 'POST':
         name = request.form['name']
         email = request.form.get('email')
+        ph_number = request.form.get('phone')
         password = request.form['password']
         confirm_password = request.form['pwd']
 
@@ -46,6 +49,10 @@ def register():
             flag = True
             return render_template('register.html', error2 = flag)
         
+        existing_user = User.query.filter_by(ph_number=ph_number).first()
+        if(existing_user):
+            return render_template('register.html', error4 = "Account already exists with this phone number")
+        
         has_alpha = any(c.isalpha() for c in password)  
         has_digit = any(c.isdigit() for c in password)  
         has_special = any(c in string.punctuation for c in password)
@@ -55,7 +62,7 @@ def register():
         if(strong_password == False):
             return render_template('register.html', error3 = "Please enter a strong password(it should contain alphabets, numbers, as well as special characters)")
 
-        new_user = User(email=email, password=password, name=name)
+        new_user = User(email=email, password=password, name=name, ph_number=ph_number)
         db.session.add(new_user)
         db.session.commit()
         session['email'] = email

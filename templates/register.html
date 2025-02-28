@@ -25,6 +25,10 @@
                     <p style="color: red;">{{error3}}</p>
                 {% endif %}
 
+                {% if(error4): %}
+                    <p style="color: red;">{{error4}}</p>
+                {% endif %}
+
 
                 <h2>Register form</h2>
                 <form action="/register" method="post">
@@ -36,6 +40,11 @@
                         <label for="email">Email:</label>
                         <input type="email" class="form-control" id="email" placeholder="Enter email" name="email" required>
 
+                    </div>
+                    <div class="form-group">
+                        <label for="phone">Phone Number:</label>
+                        <input type="tel" class="form-control" id="phone" name="phone" placeholder="+91 9876543210" pattern="(\+91\s?)?[6-9]\d{9}" required>
+                        <small class="text-muted">Format: +91 9876543210 or 9876543210</small>
                     </div>
                     <div class="form-group">
                         <label for="password">Password:</label>

@@ -23,7 +23,7 @@ class User(db.Model):
 
     def check_password(self, password):
         return bcrypt.checkpw(password.encode('utf-8'), self.password.encode('utf-8'))
-
+    
 with app.app_context():
     db.create_all()
 
@@ -46,8 +46,7 @@ def register():
 
         existing_user = User.query.filter_by(email=email).first()
         if(existing_user):
-            flag = True
-            return render_template('register.html', error2 = flag)
+            return render_template('register.html', error2 = "Account already exists with this email ID")
         
         existing_user = User.query.filter_by(ph_number=ph_number).first()
         if(existing_user):
@@ -88,7 +87,10 @@ def login():
 
 @app.route('/dashboard')
 def dashboard():
-    if session['email']:
+    if 'email' not in session:
+        return redirect('/login')
+
+    if session.get('email'):
         user = User.query.filter_by(email= session['email']).first()
         return render_template('dashboard.html', user = user)
     return redirect('/login')
@@ -99,6 +101,57 @@ def logout():
     flash("You have been logged out!")
     return redirect('/login')
 
+@app.route('/confirm', methods= ['GET', 'POST'])
+def confirm():
+    if request.method == 'POST':
+        email = request.form.get('email')
+        ph_number = request.form.get('phone')
+
+        user = User.query.filter_by(email= email).first()
+        if(not user):
+            return render_template('confirm.html', error = "No account exists with this email ID. Try again!")
+        
+        if user:
+            if user.ph_number != ph_number:
+                return render_template('confirm.html', error = "Email and phone number do not match. Please try again!")
+            else : 
+                session['email'] = email
+                return redirect('/forgot')
+
+
+    return render_template('confirm.html')
+
+@app.route('/forgot', methods = ['GET','POST'])
+def forgot():
+    if request.method == 'POST':
+        password = request.form['password']
+        confirm_password = request.form['pwd']
+
+        if(password != confirm_password):
+            return render_template('forgot.html', error = "Passwords do not match. Please try again")
+        
+        has_alpha = any(c.isalpha() for c in password)  
+        has_digit = any(c.isdigit() for c in password)  
+        has_special = any(c in string.punctuation for c in password)
+
+        strong_password = has_alpha and has_digit and has_special
+
+        if(strong_password == False):
+            return render_template('forgot.html', error = "Please enter a strong password(it should contain alphabets, numbers, as well as special characters)")
+        
+        if 'email' not in session:
+            return redirect('/login')
+        
+        if session.get('email'):
+            email = session['email']
+            user = User.query.filter_by(email= email).first()
+            user.password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            db.session.commit()
+            session.pop('email', None)
+            flash("Password Changed Successfully!")
+            return redirect('/login')        
+
+    return render_template('forgot.html')
 
 if __name__ == '__main__':
     app.run(debug=True)

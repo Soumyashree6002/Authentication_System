@@ -18,7 +18,7 @@
                 {% endif %}
                 
                 {% if(error2): %}
-                    <p style="color: red;">Account already exists with this email ID</p>
+                    <p style="color: red;">{{error2}}</p>
                 {% endif %}
 
                 {% if(error3): %}
@@ -30,7 +30,7 @@
                 {% endif %}
 
 
-                <h2>Register form</h2>
+                <h2>Registration form</h2>
                 <form action="/register" method="post">
                     <div class="form-group">
                         <label for="name">Name:</label>
